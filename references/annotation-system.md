@@ -130,31 +130,33 @@ el.addEventListener('dblclick', function(e) {
 
 ---
 
-## WebSocket Submission
+## HTTP Submission
 
-标注通过WebSocket实时提交：
+标注通过 HTTP POST 提交到标注服务器：
 
 ```javascript
-// HTML端
-const ws = new WebSocket('ws://localhost:8089');
-
-function submitAnnotations() {
-  ws.send(JSON.stringify({
-    type: 'annotations',
-    data: annotations,
-    timestamp: Date.now()
-  }));
+// 前端提交标注
+async function submitAnnotations() {
+  const res = await fetch('http://localhost:8089/annotations', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(annotations)
+  });
+  if (res.ok) {
+    alert('标注已提交！AI正在处理...');
+  }
 }
 
-// Skill端（annotation-server.js）
-wss.on('connection', ws => {
-  ws.on('message', message => {
-    const data = JSON.parse(message);
-    if (data.type === 'annotations') {
-      // Claude读取标注，修改MD + HTML
-    }
-  });
-});
+// 获取已有标注
+async function loadAnnotations() {
+  const res = await fetch('http://localhost:8089/annotations');
+  return await res.json();
+}
+
+// 清空标注
+async function clearAnnotations() {
+  await fetch('http://localhost:8089/annotations', { method: 'DELETE' });
+}
 ```
 
 ---
@@ -241,12 +243,25 @@ function exportAnnotations() {
   alert('标注已导出！请粘贴给AI处理。');
 }
 
-function submitToWebSocket() {
-  const ws = new WebSocket('ws://localhost:8089');
-  ws.onopen = () => {
-    ws.send(JSON.stringify(annotations));
-    alert('标注已提交！AI正在处理...');
-  };
+async function submitAnnotations() {
+  if (annotations.length === 0) {
+    alert('暂无标注');
+    return;
+  }
+  try {
+    const res = await fetch('http://localhost:8089/annotations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(annotations)
+    });
+    if (res.ok) {
+      alert('标注已提交！AI正在处理...');
+      annotations = [];
+      updateAnnotationList();
+    }
+  } catch (e) {
+    alert('提交失败，请检查服务是否运行');
+  }
 }
 ```
 
